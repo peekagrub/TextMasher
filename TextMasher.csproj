@@ -1,0 +1,59 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <Product>TextMasher</Product>
+    <RootNamespace>TextMasher</RootNamespace>
+    <AssemblyName>TextMasher</AssemblyName>
+    <AssemblyTitle>TextMasher</AssemblyTitle>
+    <Description>A Hollow Knight Mod</Description>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>$(AssemblyVersion)</FileVersion>
+    <ImplicitUsings>false</ImplicitUsings>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <OutputPath>bin/$(Configuration)/</OutputPath>
+    <LangVersion>latest</LangVersion>
+    <HollowKnightRefs>../HkRefs</HollowKnightRefs>
+    <ExportDir>bin/Publish</ExportDir>
+  </PropertyGroup>
+
+  <Import Project="LocalOverrides.targets" Condition="Exists('LocalOverrides.targets')" />
+
+  <ItemGroup>
+    <Reference Include="$(HollowKnightRefs)/*.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="src" />
+    <None Include=".gitignore" />
+    <None Include="LICENSE" />
+    <None Include="README.md" />
+  </ItemGroup>
+
+  <Target Name="Copy Mod" AfterTargets="PostBuildEvent">
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(HollowKnightRefs)/Mods/$(TargetName)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="Create Release Zip" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
+    <RemoveDir Directories="$(ExportDir)/$(TargetName)/" Condition="Exists('$(ExportDir)/$(TargetName)/')" />
+    <MakeDir Directories="$(ExportDir)/$(TargetName)/" />
+    <MakeDir Directories="$(ExportDir)/$(TargetName)/zip" />
+
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ExportDir)/$(TargetName)/" />
+    <Copy SourceFiles="README.md;LICENSE;$(TargetPath);$(TargetDir)/$(TargetName).pdb" DestinationFolder="$(ExportDir)/$(TargetName)/zip/" />
+    <ZipDirectory SourceDirectory="$(ExportDir)/$(TargetName)/zip/" DestinationFile="$(ExportDir)/$(TargetName)/$(TargetName).zip" />
+
+    <GetFileHash Files="$(ExportDir)/$(TargetName)/$(TargetName).zip" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="FilesWithHashes" />
+    </GetFileHash>
+
+    <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
+      <Output TaskParameter="Assemblies" ItemName="Targets" />
+    </GetAssemblyIdentity>
+    <ItemGroup>
+      <VersionNumber Include="@(Targets ->'%(Version)')" />
+    </ItemGroup>
+
+    <Message Importance="High" Text="@(FilesWithHashes->'%(Identity): %(FileHash)')" />
+    <WriteLinesToFile File="$(ExportDir)/$(TargetName)/SHA.txt" Lines="@(FilesWithHashes->'%(FileHash)')" Overwrite="true" Encoding="UTF-8" />
+    <WriteLinesToFile File="$(ExportDir)/$(TargetName)/VERSION.txt" Lines="@(VersionNumber)" Overwrite="true" Encoding="UTF-8" />
+  </Target>
+</Project>
