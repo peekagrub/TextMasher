@@ -9,7 +9,7 @@ public class TextMasher : Mod
     public override string GetVersion() => "1.0.0.0";
 
     private static FieldInfo hiddenField;
-    private FieldInfo proxyFSMField;
+    private static FieldInfo proxyFSMField;
 
     private FixedUpdateDialogueBox fixedUpdate;
 
@@ -17,9 +17,9 @@ public class TextMasher : Mod
         hiddenField = typeof(DialogueBox).GetField("hidden", BindingFlags.NonPublic | BindingFlags.Instance);
         proxyFSMField = typeof(DialogueBox).GetField("proxyFSM", BindingFlags.NonPublic | BindingFlags.Instance);
 
+        On.DialogueBox.ShowPage += OnShowPage;
         On.DialogueBox.Start += OnDialogueBoxStart;
         On.DialogueBox.SendEndEvent += OnSendEndEvent;
-        On.DialogueBox.SpeedupTypewriter += OnSpeedupTypewriter;
     }
 
     internal static bool IsActive(DialogueBox self, bool log = false) {
@@ -29,22 +29,27 @@ public class TextMasher : Mod
         return !hidden && actionsEval;
     }
 
-    private void OnDialogueBoxStart (On.DialogueBox.orig_Start orig, DialogueBox self) {
+    private void OnDialogueBoxStart(On.DialogueBox.orig_Start orig, DialogueBox self) {
         orig(self);
         fixedUpdate = self.gameObject.AddComponent<FixedUpdateDialogueBox>();
     }
 
-    private void OnSendEndEvent(On.DialogueBox.orig_SendEndEvent orig, DialogueBox self) {
-        orig(self);
-        if (IsActive(self)) {
-            PlayMakerFSM proxyFSFM = (PlayMakerFSM)proxyFSMField.GetValue(self);
-            proxyFSFM.SendEvent("NEXT");
+    private void OnShowPage(On.DialogueBox.orig_ShowPage orig, DialogueBox self, int pageNum) {
+        orig(self, pageNum);
+
+        if (IsActive(self))
+        {
+            self.Invoke("SpeedupTypewriter", 1f / 30);
         }
     }
-    
-    private void OnSpeedupTypewriter(On.DialogueBox.orig_SpeedupTypewriter orig, DialogueBox self) {
-        if (!IsActive(self)) {
-            orig(self);
+
+    private void OnSendEndEvent(On.DialogueBox.orig_SendEndEvent orig, DialogueBox self) {
+        orig(self);
+
+        if (IsActive(self))
+        {
+            fixedUpdate.fsm = (PlayMakerFSM)proxyFSMField.GetValue(self);
+            fixedUpdate.Invoke("ClosePage", 1f / 30);
         }
     }
 }
