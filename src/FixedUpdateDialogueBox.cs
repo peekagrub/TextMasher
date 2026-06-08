@@ -7,34 +7,25 @@ namespace TextMasher;
 internal class FixedUpdateDialogueBox : MonoBehaviour {
     private DialogueBox dialogue;
 
-    private FieldInfo normalRevealSpeedField;
-    private FieldInfo typingField;
+    public PlayMakerFSM fsm;
 
-    private MethodInfo typewriteCurrentPageMethod;
+    private FieldInfo fastTypingField;
 
     private void Start() {
         dialogue = gameObject.GetComponent<DialogueBox>();
-        normalRevealSpeedField = typeof(DialogueBox).GetField("normalRevealSpeed", BindingFlags.NonPublic | BindingFlags.Instance);
-        typingField = typeof(DialogueBox).GetField("typing", BindingFlags.NonPublic | BindingFlags.Instance);
-        typewriteCurrentPageMethod = typeof(DialogueBox).GetMethod("TypewriteCurrentPage", BindingFlags.NonPublic | BindingFlags.Instance);
+        fastTypingField = typeof(DialogueBox).GetField("fastTyping", BindingFlags.NonPublic | BindingFlags.Instance);
     }
 
     private void FixedUpdate() {
-        bool typing = (bool)typingField.GetValue(dialogue);
+        bool fastTyping = (bool)fastTypingField.GetValue(dialogue);
 
-        if (TextMasher.IsActive(dialogue)) {
-            if (dialogue.revealSpeed != 146 && typing) {
-                dialogue.revealSpeed = 146;
-                normalRevealSpeedField.SetValue(dialogue, dialogue.revealSpeed);
-                dialogue.StartCoroutine(typewriteCurrentPageMethod.Name, 0);
-            }
-        } else {
-            if (dialogue.revealSpeed != 65 && typing) {
-                dialogue.revealSpeed = 65;
-                normalRevealSpeedField.SetValue(dialogue, dialogue.revealSpeed);
-                dialogue.StartCoroutine(typewriteCurrentPageMethod.Name, 0);
-            }
+        if (!fastTyping && TextMasher.IsActive(dialogue)) {
+            dialogue.Invoke("SpeedupTypewriter", 1f / 30);
         }
     }
 
+    public void ClosePage()
+    {
+        fsm.SendEvent("NEXT");
+    }
 }
